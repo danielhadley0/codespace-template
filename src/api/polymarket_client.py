@@ -38,7 +38,10 @@ class PolymarketClient:
     async def initialize(self):
         """Initialize HTTP session."""
         self.session = aiohttp.ClientSession()
-        logger.info("Polymarket client initialized")
+        if settings.paper_trading_mode:
+            logger.info("Polymarket client initialized in paper trading mode")
+        else:
+            logger.info("Polymarket client initialized")
 
     async def close(self):
         """Close HTTP session."""
@@ -64,6 +67,11 @@ class PolymarketClient:
         Returns:
             List of market dictionaries
         """
+        # Return mock data in paper trading mode
+        if settings.paper_trading_mode:
+            logger.debug("Paper trading mode - returning mock Polymarket markets")
+            return self._get_mock_markets()
+
         try:
             url = f"{self.base_url}/markets"
             params = {
@@ -90,6 +98,33 @@ class PolymarketClient:
         except Exception as e:
             logger.error("Error fetching Polymarket markets", error=str(e))
             return []
+
+    def _get_mock_markets(self) -> List[Dict[str, Any]]:
+        """Return mock market data for paper trading."""
+        return [
+            {
+                'condition_id': 'MOCK-POLY-001',
+                'question': 'Will Bitcoin be above $70,000 on Dec 31, 2025?',
+                'end_date_iso': '2025-12-31T23:59:00Z',
+                'outcomePrices': [0.48, 0.52],
+                'outcomes': [
+                    {'token_id': 'token1'},
+                    {'token_id': 'token2'}
+                ],
+                'volume': 50000
+            },
+            {
+                'condition_id': 'MOCK-POLY-002',
+                'question': 'Will the S&P 500 end 2025 above 6000?',
+                'end_date_iso': '2025-12-31T23:59:00Z',
+                'outcomePrices': [0.40, 0.60],
+                'outcomes': [
+                    {'token_id': 'token3'},
+                    {'token_id': 'token4'}
+                ],
+                'volume': 75000
+            }
+        ]
 
     @retry_with_backoff(max_retries=3)
     async def get_market(self, condition_id: str) -> Optional[Dict[str, Any]]:
