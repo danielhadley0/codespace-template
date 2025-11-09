@@ -108,6 +108,7 @@ class EventMatcher:
     ) -> List[Dict]:
         """
         Find potential matching event pairs using string similarity.
+        Excludes events that are already part of verified pairs.
 
         Args:
             min_similarity: Override default similarity threshold
@@ -119,21 +120,46 @@ class EventMatcher:
         matches = []
 
         async with db_manager.session() as session:
-            # Get all active Kalshi events
+            # Get all verified pairs to exclude already-matched events
+            verified_stmt = select(VerifiedPair).where(
+                VerifiedPair.is_active == True
+            )
+            verified_result = await session.execute(verified_stmt)
+            verified_pairs = verified_result.scalars().all()
+
+            # Build sets of event IDs that are already matched
+            matched_kalshi_ids = {pair.kalshi_event_id for pair in verified_pairs}
+            matched_polymarket_ids = {pair.polymarket_event_id for pair in verified_pairs}
+
+            logger.debug(
+                "Excluding already-matched events",
+                matched_kalshi=len(matched_kalshi_ids),
+                matched_polymarket=len(matched_polymarket_ids)
+            )
+
+            # Get all active Kalshi events that aren't already matched
             kalshi_stmt = select(Event).where(
                 Event.source == Exchange.KALSHI,
-                Event.is_active == True
+                Event.is_active == True,
+                Event.id.not_in(matched_kalshi_ids) if matched_kalshi_ids else True
             )
             kalshi_result = await session.execute(kalshi_stmt)
             kalshi_events = kalshi_result.scalars().all()
 
-            # Get all active Polymarket events
+            # Get all active Polymarket events that aren't already matched
             polymarket_stmt = select(Event).where(
                 Event.source == Exchange.POLYMARKET,
-                Event.is_active == True
+                Event.is_active == True,
+                Event.id.not_in(matched_polymarket_ids) if matched_polymarket_ids else True
             )
             polymarket_result = await session.execute(polymarket_stmt)
             polymarket_events = polymarket_result.scalars().all()
+
+            logger.debug(
+                "Unmatched events available",
+                kalshi=len(kalshi_events),
+                polymarket=len(polymarket_events)
+            )
 
             # Compare each pair
             for k_event in kalshi_events:

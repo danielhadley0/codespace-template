@@ -172,6 +172,18 @@ class KalshiClient:
         Returns:
             Market details dictionary or None
         """
+        # Return mock data in paper trading mode
+        if settings.paper_trading_mode:
+            logger.debug("Paper trading mode - returning mock market data",
+                        ticker=market_ticker)
+            # Find and return the mock market that matches this ticker
+            mock_markets = self._get_mock_markets()
+            for market in mock_markets:
+                if market.get('ticker') == market_ticker:
+                    return market
+            # If not found, return the first mock market as fallback
+            return mock_markets[0] if mock_markets else None
+
         try:
             url = f"{self.base_url}/markets/{market_ticker}"
 
@@ -205,6 +217,23 @@ class KalshiClient:
         Returns:
             Orderbook data with bids and asks
         """
+        # Return mock orderbook in paper trading mode
+        if settings.paper_trading_mode:
+            logger.debug("Paper trading mode - returning mock orderbook",
+                        ticker=market_ticker)
+            return {
+                'yes': [
+                    {'price': 55, 'size': 100},
+                    {'price': 54, 'size': 200},
+                    {'price': 53, 'size': 500}
+                ],
+                'no': [
+                    {'price': 45, 'size': 100},
+                    {'price': 44, 'size': 200},
+                    {'price': 43, 'size': 500}
+                ]
+            }
+
         try:
             url = f"{self.base_url}/markets/{market_ticker}/orderbook"
 

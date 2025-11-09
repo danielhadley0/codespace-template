@@ -137,6 +137,18 @@ class PolymarketClient:
         Returns:
             Market details dictionary or None
         """
+        # Return mock data in paper trading mode
+        if settings.paper_trading_mode:
+            logger.debug("Paper trading mode - returning mock market data",
+                        condition_id=condition_id)
+            # Find and return the mock market that matches this condition_id
+            mock_markets = self._get_mock_markets()
+            for market in mock_markets:
+                if market.get('condition_id') == condition_id:
+                    return market
+            # If not found, return the first mock market as fallback
+            return mock_markets[0] if mock_markets else None
+
         try:
             url = f"{self.base_url}/markets/{condition_id}"
 
@@ -169,6 +181,23 @@ class PolymarketClient:
         Returns:
             Orderbook data with bids and asks
         """
+        # Return mock orderbook in paper trading mode
+        if settings.paper_trading_mode:
+            logger.debug("Paper trading mode - returning mock orderbook",
+                        token_id=token_id)
+            return {
+                'bids': [
+                    {'price': 0.48, 'size': 1000},
+                    {'price': 0.47, 'size': 2000},
+                    {'price': 0.46, 'size': 5000}
+                ],
+                'asks': [
+                    {'price': 0.52, 'size': 1000},
+                    {'price': 0.53, 'size': 2000},
+                    {'price': 0.54, 'size': 5000}
+                ]
+            }
+
         try:
             url = f"{self.base_url}/book"
             params = {"token_id": token_id}
