@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fuzzywuzzy import fuzz
 import structlog
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.database import db_manager, Event, VerifiedPair, Exchange
 from src.api import KalshiClient, PolymarketClient
@@ -252,7 +253,10 @@ class EventMatcher:
             List of VerifiedPair objects
         """
         async with db_manager.session() as session:
-            stmt = select(VerifiedPair)
+            stmt = select(VerifiedPair).options(
+                selectinload(VerifiedPair.kalshi_event),
+                selectinload(VerifiedPair.polymarket_event)
+            )
             if active_only:
                 stmt = stmt.where(VerifiedPair.is_active == True)
 
