@@ -54,8 +54,15 @@ class KalshiClient:
 
     async def authenticate(self):
         """Authenticate with Kalshi and obtain access token."""
+        # Skip authentication in paper trading mode
+        if settings.paper_trading_mode:
+            logger.info("Kalshi client in paper trading mode - skipping authentication")
+            self.auth_token = "PAPER_TRADING_MODE"
+            return
+
         try:
-            url = f"{self.base_url}/login"
+            # Updated endpoint for Kalshi API v2
+            url = f"{self.base_url}/log_in"
             payload = {
                 "email": self.api_key,
                 "password": self.api_secret
@@ -98,6 +105,11 @@ class KalshiClient:
         Returns:
             List of market dictionaries
         """
+        # Return mock data in paper trading mode
+        if settings.paper_trading_mode:
+            logger.debug("Paper trading mode - returning mock Kalshi markets")
+            return self._get_mock_markets()
+
         try:
             url = f"{self.base_url}/markets"
             params = {
@@ -125,6 +137,29 @@ class KalshiClient:
         except Exception as e:
             logger.error("Error fetching Kalshi markets", error=str(e))
             return []
+
+    def _get_mock_markets(self) -> List[Dict[str, Any]]:
+        """Return mock market data for paper trading."""
+        return [
+            {
+                'ticker': 'MOCK-KALSHI-001',
+                'title': 'Will Bitcoin be above $70,000 on Dec 31, 2025?',
+                'close_time': '2025-12-31T23:59:00Z',
+                'yes_bid': 55,
+                'no_bid': 45,
+                'volume': 10000,
+                'status': 'open'
+            },
+            {
+                'ticker': 'MOCK-KALSHI-002',
+                'title': 'Will the S&P 500 end 2025 above 6000?',
+                'close_time': '2025-12-31T23:59:00Z',
+                'yes_bid': 62,
+                'no_bid': 38,
+                'volume': 15000,
+                'status': 'open'
+            }
+        ]
 
     @retry_with_backoff(max_retries=3)
     async def get_market(self, market_ticker: str) -> Optional[Dict[str, Any]]:

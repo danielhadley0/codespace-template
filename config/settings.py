@@ -12,17 +12,29 @@ class Settings(BaseSettings):
     # Database
     database_url: str = Field(..., env='DATABASE_URL')
 
-    # Kalshi API
-    kalshi_api_key: str = Field(..., env='KALSHI_API_KEY')
-    kalshi_api_secret: str = Field(..., env='KALSHI_API_SECRET')
+    # Kalshi API (optional in paper trading mode)
+    kalshi_api_key: str = Field(
+        default='not_needed_for_paper_trading',
+        env='KALSHI_API_KEY'
+    )
+    kalshi_api_secret: str = Field(
+        default='not_needed_for_paper_trading',
+        env='KALSHI_API_SECRET'
+    )
     kalshi_base_url: str = Field(
         default='https://api.elections.kalshi.com/trade-api/v2',
         env='KALSHI_BASE_URL'
     )
 
-    # Polymarket API
-    polymarket_api_key: str = Field(..., env='POLYMARKET_API_KEY')
-    polymarket_private_key: str = Field(..., env='POLYMARKET_PRIVATE_KEY')
+    # Polymarket API (optional in paper trading mode)
+    polymarket_api_key: str = Field(
+        default='not_needed_for_paper_trading',
+        env='POLYMARKET_API_KEY'
+    )
+    polymarket_private_key: str = Field(
+        default='not_needed_for_paper_trading',
+        env='POLYMARKET_PRIVATE_KEY'
+    )
     polymarket_base_url: str = Field(
         default='https://clob.polymarket.com',
         env='POLYMARKET_BASE_URL'
