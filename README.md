@@ -2,6 +2,8 @@
 
 A fully automated system that continuously monitors Kalshi and Polymarket for arbitrage opportunities between equivalent prediction markets. Once a pair of events is manually confirmed by the user as identical, the system automatically executes orders to exploit arbitrage spreads while managing partial fills, position limits, and execution slippage.
 
+> 🎓 **New to this?** Check out our [Super Simple Setup Guide](SETUP_GUIDE.md) - it explains everything like you're 5 years old!
+
 ## Features
 
 - **🧪 Paper Trading Mode**: Test the system with simulated trades before risking real money (enabled by default)
