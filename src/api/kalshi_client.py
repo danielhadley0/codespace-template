@@ -386,13 +386,23 @@ class KalshiClient:
         Returns:
             Standardized event dictionary
         """
+        # Parse close_time and remove timezone info for database compatibility
+        close_time = None
+        if market.get('close_time'):
+            try:
+                # Parse and convert to naive datetime
+                dt = datetime.fromisoformat(
+                    market.get('close_time', '').replace('Z', '+00:00')
+                )
+                close_time = dt.replace(tzinfo=None)  # Remove timezone
+            except:
+                pass
+
         return {
             'event_id': market.get('ticker'),
             'title': market.get('title', ''),
             'url': f"https://kalshi.com/markets/{market.get('ticker')}",
-            'close_time': datetime.fromisoformat(
-                market.get('close_time', '').replace('Z', '+00:00')
-            ) if market.get('close_time') else None,
+            'close_time': close_time,
             'yes_price': market.get('yes_bid', 0) / 100.0,  # Convert cents to decimal
             'no_price': market.get('no_bid', 0) / 100.0,
             'liquidity': market.get('volume', 0),

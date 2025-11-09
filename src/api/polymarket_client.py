@@ -370,13 +370,23 @@ class PolymarketClient:
         yes_price = float(outcome_prices[0]) if len(outcome_prices) > 0 else 0.5
         no_price = float(outcome_prices[1]) if len(outcome_prices) > 1 else (1 - yes_price)
 
+        # Parse close_time and remove timezone info for database compatibility
+        close_time = None
+        if market.get('end_date_iso'):
+            try:
+                # Parse and convert to naive datetime
+                dt = datetime.fromisoformat(
+                    market.get('end_date_iso', '').replace('Z', '+00:00')
+                )
+                close_time = dt.replace(tzinfo=None)  # Remove timezone
+            except:
+                pass
+
         return {
             'event_id': market.get('condition_id', market.get('id')),
             'title': market.get('question', market.get('title', '')),
             'url': f"https://polymarket.com/market/{market.get('slug', '')}",
-            'close_time': datetime.fromisoformat(
-                market.get('end_date_iso', '').replace('Z', '+00:00')
-            ) if market.get('end_date_iso') else None,
+            'close_time': close_time,
             'yes_price': yes_price,
             'no_price': no_price,
             'liquidity': float(market.get('volume', 0)),

@@ -399,12 +399,12 @@ class ArbitrageBot(commands.Bot):
 
             await ctx.send(embed=embed)
 
-        @self.command(name='help')
-        async def help_command(ctx):
+        @self.command(name='commands')
+        async def commands_list_command(ctx):
             """
             Show available commands.
 
-            Usage: /help
+            Usage: /commands
             """
             embed = discord.Embed(
                 title="🤖 Arbitrage Bot Commands",
@@ -412,7 +412,7 @@ class ArbitrageBot(commands.Bot):
                 color=discord.Color.purple()
             )
 
-            commands_list = [
+            cmd_list = [
                 ("/find_matches [similarity]", "Find potential matching events"),
                 ("/approve_pair <kalshi_id> <poly_id>", "Approve an event pair"),
                 ("/list_pairs", "List all active verified pairs"),
@@ -421,10 +421,10 @@ class ArbitrageBot(commands.Bot):
                 ("/trading_mode", "Show current trading mode (paper/live)"),
                 ("/paper_stats", "Show paper trading statistics"),
                 ("/reset_paper", "Reset paper trading stats"),
-                ("/help", "Show this help message"),
+                ("/commands", "Show this command list"),
             ]
 
-            for cmd, desc in commands_list:
+            for cmd, desc in cmd_list:
                 embed.add_field(name=cmd, value=desc, inline=False)
 
             await ctx.send(embed=embed)
