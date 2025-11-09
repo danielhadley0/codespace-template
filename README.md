@@ -4,6 +4,7 @@ A fully automated system that continuously monitors Kalshi and Polymarket for ar
 
 ## Features
 
+- **🧪 Paper Trading Mode**: Test the system with simulated trades before risking real money (enabled by default)
 - **Real-time Market Monitoring**: Continuously fetches market data from both Kalshi and Polymarket APIs
 - **Intelligent Event Matching**: Uses fuzzy string matching to identify equivalent markets across platforms
 - **Manual Approval Workflow**: Discord bot integration for reviewing and approving event pairs
@@ -61,7 +62,8 @@ A fully automated system that continuously monitors Kalshi and Polymarket for ar
 │   │   ├── models.py            # SQLAlchemy models
 │   │   └── connection.py        # Database connection manager
 │   ├── execution/
-│   │   ├── executor.py          # Trade execution engine
+│   │   ├── executor.py          # Live trade execution engine
+│   │   ├── paper_executor.py    # Paper trading simulator
 │   │   └── position_manager.py  # Position and PnL tracking
 │   ├── discord_bot/
 │   │   └── bot.py               # Discord bot with commands
@@ -162,6 +164,78 @@ cp .env.example .env
 python -m src.main
 ```
 
+## Paper Trading Mode
+
+**🧪 The system starts in paper trading mode by default for safety.** This allows you to test the entire arbitrage detection and execution system without risking any real money.
+
+### How Paper Trading Works
+
+- **Simulated Fills**: Orders are simulated with realistic slippage (default 0.5%)
+- **Partial Fills**: Random partial fills (10% chance) to test fill management logic
+- **Virtual Balance**: Starts with $10,000 virtual balance (configurable)
+- **Real Detection**: Uses actual market data to detect arbitrage opportunities
+- **Full Tracking**: All trades, positions, and PnL tracked in database
+- **Performance Metrics**: Comprehensive statistics on win rate, profit, and trades
+
+### Paper Trading Commands
+
+View your paper trading performance with Discord commands:
+
+```bash
+/trading_mode        # Check if you're in paper or live mode
+/paper_stats         # View detailed performance statistics
+/reset_paper         # Reset stats and start fresh
+```
+
+### Example Output
+
+```
+📊 Paper Trading Statistics
+
+💰 Balance
+Starting: $10,000.00
+Current: $10,250.00
+Change: $250.00 (+2.50%)
+
+📈 Trading Performance
+Total Trades: 15
+Successful: 14
+Failed: 1
+Win Rate: 93.3%
+
+💵 Profit & Loss
+Total PnL: $250.00
+Avg Profit: $17.86
+Runtime: 120.5 min
+```
+
+### Switching to Live Trading
+
+**⚠️ WARNING**: Live trading uses real money and real API keys. Only switch to live mode after:
+
+1. Testing thoroughly in paper mode
+2. Verifying your API credentials work correctly
+3. Understanding the risks involved
+4. Starting with small position sizes
+
+To switch to live trading:
+
+1. Edit your `.env` file:
+   ```bash
+   PAPER_TRADING_MODE=false
+   ```
+
+2. Restart the system:
+   ```bash
+   docker-compose restart arbitrage_app
+   # OR for local
+   # Stop and restart: python -m src.main
+   ```
+
+3. Verify the mode with `/trading_mode` command in Discord
+
+The system will display a prominent warning when in live trading mode.
+
 ## Configuration
 
 ### Environment Variables
@@ -175,6 +249,10 @@ python -m src.main
 | `KALSHI_API_SECRET` | Kalshi API secret | Required |
 | `POLYMARKET_API_KEY` | Polymarket API key (wallet address) | Required |
 | `POLYMARKET_PRIVATE_KEY` | Polymarket private key for signing | Required |
+| `PAPER_TRADING_MODE` | Enable paper trading (safe default) | `true` |
+| `PAPER_STARTING_BALANCE` | Virtual balance for paper trading ($) | `10000` |
+| `PAPER_SIMULATED_SLIPPAGE` | Simulated slippage (%) | `0.005` (0.5%) |
+| `PAPER_PARTIAL_FILL_CHANCE` | Chance of partial fills | `0.1` (10%) |
 | `MIN_ARBITRAGE_THRESHOLD` | Minimum profit threshold (%) | `0.01` (1%) |
 | `MAX_TRADE_SIZE` | Maximum trade size per opportunity ($) | `1000` |
 | `MAX_POSITION_PER_MARKET` | Maximum open exposure per market ($) | `5000` |

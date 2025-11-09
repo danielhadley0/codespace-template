@@ -23,6 +23,7 @@ class ArbitrageBot(commands.Bot):
         self,
         event_matcher: EventMatcher,
         position_manager: PositionManager,
+        paper_executor=None,
         *args,
         **kwargs
     ):
@@ -32,6 +33,7 @@ class ArbitrageBot(commands.Bot):
         Args:
             event_matcher: EventMatcher instance
             position_manager: PositionManager instance
+            paper_executor: PaperTradingExecutor instance (if in paper mode)
         """
         intents = discord.Intents.default()
         intents.message_content = True
@@ -45,6 +47,7 @@ class ArbitrageBot(commands.Bot):
 
         self.event_matcher = event_matcher
         self.position_manager = position_manager
+        self.paper_executor = paper_executor
         self.notification_channel_id = settings.discord_channel_id
         self.pending_approvals: Dict[str, Dict] = {}  # message_id -> match data
 
@@ -240,6 +243,162 @@ class ArbitrageBot(commands.Bot):
                 logger.error("Error pausing pair", error=str(e))
                 await ctx.send(f"Error: {str(e)}")
 
+        @self.command(name='paper_stats')
+        async def paper_stats(ctx):
+            """
+            Show paper trading statistics.
+
+            Usage: /paper_stats
+            """
+            if not self.paper_executor:
+                await ctx.send("❌ Paper trading mode is not enabled.")
+                return
+
+            try:
+                stats = self.paper_executor.get_stats()
+
+                embed = discord.Embed(
+                    title="📊 Paper Trading Statistics",
+                    description="Simulated trading performance",
+                    color=discord.Color.blue(),
+                    timestamp=datetime.utcnow()
+                )
+
+                # Balance info
+                balance_change = stats['current_balance'] - stats['starting_balance']
+                balance_pct = (balance_change / stats['starting_balance'] * 100) if stats['starting_balance'] > 0 else 0
+
+                embed.add_field(
+                    name="💰 Balance",
+                    value=(
+                        f"Starting: ${stats['starting_balance']:.2f}\n"
+                        f"Current: ${stats['current_balance']:.2f}\n"
+                        f"Change: ${balance_change:.2f} ({balance_pct:+.2f}%)"
+                    ),
+                    inline=False
+                )
+
+                # Trading stats
+                embed.add_field(
+                    name="📈 Trading Performance",
+                    value=(
+                        f"Total Trades: {stats['total_trades']}\n"
+                        f"Successful: {stats['successful_trades']}\n"
+                        f"Failed: {stats['failed_trades']}\n"
+                        f"Win Rate: {stats['win_rate']:.1f}%"
+                    ),
+                    inline=True
+                )
+
+                # PnL stats
+                embed.add_field(
+                    name="💵 Profit & Loss",
+                    value=(
+                        f"Total PnL: ${stats['total_pnl']:.2f}\n"
+                        f"Avg Profit: ${stats['avg_profit_per_trade']:.2f}\n"
+                        f"Runtime: {stats['runtime_seconds']/60:.1f} min"
+                    ),
+                    inline=True
+                )
+
+                embed.set_footer(text=f"Paper trading mode • Session started: {stats['session_start'].strftime('%Y-%m-%d %H:%M')}")
+
+                await ctx.send(embed=embed)
+
+            except Exception as e:
+                logger.error("Error getting paper trading stats", error=str(e))
+                await ctx.send(f"Error: {str(e)}")
+
+        @self.command(name='reset_paper')
+        async def reset_paper(ctx):
+            """
+            Reset paper trading statistics.
+
+            Usage: /reset_paper
+            """
+            if not self.paper_executor:
+                await ctx.send("❌ Paper trading mode is not enabled.")
+                return
+
+            try:
+                old_stats = self.paper_executor.get_stats()
+                self.paper_executor.reset_stats()
+
+                embed = discord.Embed(
+                    title="🔄 Paper Trading Stats Reset",
+                    description="Statistics have been reset to starting values",
+                    color=discord.Color.green(),
+                    timestamp=datetime.utcnow()
+                )
+
+                embed.add_field(
+                    name="Previous Session",
+                    value=(
+                        f"Total PnL: ${old_stats['total_pnl']:.2f}\n"
+                        f"Total Trades: {old_stats['total_trades']}\n"
+                        f"Win Rate: {old_stats['win_rate']:.1f}%"
+                    ),
+                    inline=False
+                )
+
+                await ctx.send(embed=embed)
+
+            except Exception as e:
+                logger.error("Error resetting paper trading stats", error=str(e))
+                await ctx.send(f"Error: {str(e)}")
+
+        @self.command(name='trading_mode')
+        async def trading_mode(ctx):
+            """
+            Show current trading mode (paper or live).
+
+            Usage: /trading_mode
+            """
+            mode = "PAPER TRADING" if settings.paper_trading_mode else "LIVE TRADING"
+            color = discord.Color.blue() if settings.paper_trading_mode else discord.Color.red()
+
+            embed = discord.Embed(
+                title=f"{'📄' if settings.paper_trading_mode else '💰'} Current Trading Mode",
+                description=f"**{mode}**",
+                color=color,
+                timestamp=datetime.utcnow()
+            )
+
+            if settings.paper_trading_mode:
+                embed.add_field(
+                    name="Paper Trading Info",
+                    value=(
+                        "✅ Safe mode - no real money at risk\n"
+                        "✅ Simulates fills with realistic slippage\n"
+                        "✅ Tracks performance metrics\n"
+                        f"Starting balance: ${settings.paper_starting_balance:.2f}"
+                    ),
+                    inline=False
+                )
+                embed.add_field(
+                    name="To switch to live trading",
+                    value="Set `PAPER_TRADING_MODE=false` in .env and restart",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="⚠️ LIVE TRADING WARNING",
+                    value=(
+                        "🔴 Real money is at risk\n"
+                        "🔴 Actual orders will be placed\n"
+                        "🔴 Ensure APIs are properly configured\n"
+                        "🔴 Monitor positions carefully"
+                    ),
+                    inline=False
+                )
+                embed.add_field(
+                    name="To switch to paper trading",
+                    value="Set `PAPER_TRADING_MODE=true` in .env and restart",
+                    inline=False
+                )
+
+            await ctx.send(embed=embed)
+
         @self.command(name='help')
         async def help_command(ctx):
             """
@@ -259,6 +418,9 @@ class ArbitrageBot(commands.Bot):
                 ("/list_pairs", "List all active verified pairs"),
                 ("/positions", "Show current positions and PnL"),
                 ("/pause_pair <pair_id>", "Pause trading for a pair"),
+                ("/trading_mode", "Show current trading mode (paper/live)"),
+                ("/paper_stats", "Show paper trading statistics"),
+                ("/reset_paper", "Reset paper trading stats"),
                 ("/help", "Show this help message"),
             ]
 
@@ -438,7 +600,8 @@ class ArbitrageBot(commands.Bot):
 
 async def run_discord_bot(
     event_matcher: EventMatcher,
-    position_manager: PositionManager
+    position_manager: PositionManager,
+    paper_executor=None
 ):
     """
     Run the Discord bot.
@@ -446,10 +609,12 @@ async def run_discord_bot(
     Args:
         event_matcher: EventMatcher instance
         position_manager: PositionManager instance
+        paper_executor: PaperTradingExecutor instance (optional)
     """
     bot = ArbitrageBot(
         event_matcher=event_matcher,
-        position_manager=position_manager
+        position_manager=position_manager,
+        paper_executor=paper_executor
     )
 
     try:

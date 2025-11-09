@@ -13,7 +13,7 @@ from src.utils.logger import setup_logging
 from src.database import db_manager
 from src.api import KalshiClient, PolymarketClient
 from src.arbitrage import EventMatcher, ArbitrageDetector
-from src.execution import TradeExecutor, PositionManager
+from src.execution import TradeExecutor, PositionManager, PaperTradingExecutor
 from src.discord_bot import ArbitrageBot
 
 logger = structlog.get_logger()
@@ -64,20 +64,36 @@ class ArbitrageOrchestrator:
                 polymarket_client=self.polymarket_client
             )
 
-            self.trade_executor = TradeExecutor(
-                kalshi_client=self.kalshi_client,
-                polymarket_client=self.polymarket_client
-            )
+            # Initialize trade executor based on mode
+            if settings.paper_trading_mode:
+                logger.warning(
+                    "🧪 PAPER TRADING MODE ENABLED - No real money at risk",
+                    starting_balance=settings.paper_starting_balance
+                )
+                self.trade_executor = PaperTradingExecutor()
+            else:
+                logger.warning(
+                    "⚠️  LIVE TRADING MODE ENABLED - Real money at risk!",
+                    mode="LIVE"
+                )
+                self.trade_executor = TradeExecutor(
+                    kalshi_client=self.kalshi_client,
+                    polymarket_client=self.polymarket_client
+                )
 
             self.position_manager = PositionManager()
 
-            # Initialize Discord bot
+            # Initialize Discord bot with paper executor if in paper mode
             self.discord_bot = ArbitrageBot(
                 event_matcher=self.event_matcher,
-                position_manager=self.position_manager
+                position_manager=self.position_manager,
+                paper_executor=self.trade_executor if settings.paper_trading_mode else None
             )
 
-            logger.info("Arbitrage orchestrator initialized successfully")
+            logger.info(
+                "Arbitrage orchestrator initialized successfully",
+                mode="PAPER" if settings.paper_trading_mode else "LIVE"
+            )
 
         except Exception as e:
             logger.error("Failed to initialize orchestrator", error=str(e))
