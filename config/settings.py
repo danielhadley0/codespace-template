@@ -36,12 +36,18 @@ class Settings(BaseSettings):
     redis_url: Optional[str] = Field(default='redis://localhost:6379/0', env='REDIS_URL')
 
     # Trading Parameters
+    paper_trading_mode: bool = Field(default=True, env='PAPER_TRADING_MODE')
     min_arbitrage_threshold: float = Field(default=0.01, env='MIN_ARBITRAGE_THRESHOLD')
     max_trade_size: float = Field(default=1000.0, env='MAX_TRADE_SIZE')
     max_position_per_market: float = Field(default=5000.0, env='MAX_POSITION_PER_MARKET')
     slippage_tolerance: float = Field(default=0.02, env='SLIPPAGE_TOLERANCE')
     order_timeout_seconds: int = Field(default=30, env='ORDER_TIMEOUT_SECONDS')
     cooldown_between_trades: int = Field(default=5, env='COOLDOWN_BETWEEN_TRADES')
+
+    # Paper Trading Parameters
+    paper_simulated_slippage: float = Field(default=0.005, env='PAPER_SIMULATED_SLIPPAGE')
+    paper_partial_fill_chance: float = Field(default=0.1, env='PAPER_PARTIAL_FILL_CHANCE')
+    paper_starting_balance: float = Field(default=10000.0, env='PAPER_STARTING_BALANCE')
 
     # Monitoring
     price_fetch_interval: int = Field(default=5, env='PRICE_FETCH_INTERVAL')
