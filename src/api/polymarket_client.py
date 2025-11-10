@@ -185,16 +185,17 @@ class PolymarketClient:
         if settings.paper_trading_mode:
             logger.debug("Paper trading mode - returning mock orderbook",
                         token_id=token_id)
+            # Orderbook format: list of [price, size]
             return {
                 'bids': [
-                    {'price': 0.48, 'size': 1000},
-                    {'price': 0.47, 'size': 2000},
-                    {'price': 0.46, 'size': 5000}
+                    [0.48, 1000],  # Price 0.48, size 1000
+                    [0.47, 2000],
+                    [0.46, 5000]
                 ],
                 'asks': [
-                    {'price': 0.52, 'size': 1000},
-                    {'price': 0.53, 'size': 2000},
-                    {'price': 0.54, 'size': 5000}
+                    [0.52, 1000],  # Price 0.52, size 1000
+                    [0.53, 2000],
+                    [0.54, 5000]
                 ]
             }
 

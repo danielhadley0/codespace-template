@@ -221,16 +221,17 @@ class KalshiClient:
         if settings.paper_trading_mode:
             logger.debug("Paper trading mode - returning mock orderbook",
                         ticker=market_ticker)
+            # Orderbook format: list of [price_in_cents, size]
             return {
                 'yes': [
-                    {'price': 55, 'size': 100},
-                    {'price': 54, 'size': 200},
-                    {'price': 53, 'size': 500}
+                    [55, 100],  # 55 cents, 100 contracts
+                    [54, 200],
+                    [53, 500]
                 ],
                 'no': [
-                    {'price': 45, 'size': 100},
-                    {'price': 44, 'size': 200},
-                    {'price': 43, 'size': 500}
+                    [45, 100],  # 45 cents, 100 contracts
+                    [44, 200],
+                    [43, 500]
                 ]
             }
 
