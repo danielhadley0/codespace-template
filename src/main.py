@@ -212,6 +212,17 @@ class ArbitrageOrchestrator:
             strategy: ArbitrageStrategy object
         """
         try:
+            # Check if there's already an open position for this pair
+            has_open_position = await self.position_manager.has_open_position_for_pair(pair)
+            if has_open_position:
+                logger.debug(
+                    "Skipping opportunity - already have open position for this pair",
+                    pair_id=pair.id,
+                    kalshi_event_id=pair.kalshi_event.event_id,
+                    polymarket_event_id=pair.polymarket_event.event_id
+                )
+                return
+
             # Log the opportunity
             opportunity = await self.arbitrage_detector.log_opportunity(
                 pair=pair,

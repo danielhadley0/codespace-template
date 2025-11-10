@@ -141,24 +141,89 @@ class KalshiClient:
     def _get_mock_markets(self) -> List[Dict[str, Any]]:
         """Return mock market data for paper trading."""
         return [
-            {
-                'ticker': 'MOCK-KALSHI-001',
-                'title': 'Will Bitcoin be above $70,000 on Dec 31, 2025?',
-                'close_time': '2025-12-31T23:59:00Z',
-                'yes_bid': 55,
-                'no_bid': 45,
-                'volume': 10000,
-                'status': 'open'
-            },
-            {
-                'ticker': 'MOCK-KALSHI-002',
-                'title': 'Will the S&P 500 end 2025 above 6000?',
-                'close_time': '2025-12-31T23:59:00Z',
-                'yes_bid': 62,
-                'no_bid': 38,
-                'volume': 15000,
-                'status': 'open'
-            }
+            # Crypto markets
+            {'ticker': 'BTC-DEC25-70K', 'title': 'Will Bitcoin be above $70,000 on Dec 31, 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 55, 'no_bid': 45, 'volume': 50000, 'status': 'open'},
+            {'ticker': 'ETH-DEC25-5K', 'title': 'Will Ethereum reach $5,000 by end of 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 48, 'no_bid': 52, 'volume': 35000, 'status': 'open'},
+            {'ticker': 'BTC-JUN25-100K', 'title': 'Will Bitcoin hit $100,000 before July 2025?',
+             'close_time': '2025-06-30T23:59:00Z', 'yes_bid': 35, 'no_bid': 65, 'volume': 80000, 'status': 'open'},
+            {'ticker': 'SOL-2025-500', 'title': 'Will Solana trade above $500 in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 42, 'no_bid': 58, 'volume': 25000, 'status': 'open'},
+
+            # Stock market indices
+            {'ticker': 'SPX-2025-6000', 'title': 'Will the S&P 500 end 2025 above 6000?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 62, 'no_bid': 38, 'volume': 75000, 'status': 'open'},
+            {'ticker': 'SPX-2025-6500', 'title': 'Will S&P 500 reach 6500 in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 45, 'no_bid': 55, 'volume': 60000, 'status': 'open'},
+            {'ticker': 'NASDAQ-2025-20K', 'title': 'Will NASDAQ hit 20,000 in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 51, 'no_bid': 49, 'volume': 45000, 'status': 'open'},
+            {'ticker': 'DOW-2025-45K', 'title': 'Will Dow Jones reach 45,000 by end of 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 58, 'no_bid': 42, 'volume': 40000, 'status': 'open'},
+
+            # Tech stocks
+            {'ticker': 'TSLA-2025-500', 'title': 'Will Tesla stock hit $500 in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 38, 'no_bid': 62, 'volume': 90000, 'status': 'open'},
+            {'ticker': 'NVDA-2025-200', 'title': 'Will NVIDIA reach $200 per share in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 65, 'no_bid': 35, 'volume': 85000, 'status': 'open'},
+            {'ticker': 'AAPL-2025-250', 'title': 'Will Apple stock trade above $250 in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 52, 'no_bid': 48, 'volume': 70000, 'status': 'open'},
+            {'ticker': 'MSFT-2025-500', 'title': 'Will Microsoft reach $500 in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 48, 'no_bid': 52, 'volume': 65000, 'status': 'open'},
+
+            # Politics - US
+            {'ticker': 'PRES-2028-DEM', 'title': 'Will a Democrat win the 2028 Presidential election?',
+             'close_time': '2028-11-08T23:59:00Z', 'yes_bid': 50, 'no_bid': 50, 'volume': 120000, 'status': 'open'},
+            {'ticker': 'HOUSE-2026-GOP', 'title': 'Will Republicans control House in 2026?',
+             'close_time': '2026-11-04T23:59:00Z', 'yes_bid': 54, 'no_bid': 46, 'volume': 75000, 'status': 'open'},
+            {'ticker': 'SENATE-2026-DEM', 'title': 'Will Democrats control Senate after 2026 midterms?',
+             'close_time': '2026-11-04T23:59:00Z', 'yes_bid': 47, 'no_bid': 53, 'volume': 68000, 'status': 'open'},
+
+            # Economy
+            {'ticker': 'FED-2025-CUTS', 'title': 'Will Fed cut rates at least 3 times in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 41, 'no_bid': 59, 'volume': 55000, 'status': 'open'},
+            {'ticker': 'RECESSION-2025', 'title': 'Will US enter recession in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 28, 'no_bid': 72, 'volume': 90000, 'status': 'open'},
+            {'ticker': 'CPI-2025-3PCT', 'title': 'Will inflation fall below 3% in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 60, 'no_bid': 40, 'volume': 45000, 'status': 'open'},
+            {'ticker': 'GOLD-2025-3000', 'title': 'Will gold reach $3,000 per ounce in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 44, 'no_bid': 56, 'volume': 35000, 'status': 'open'},
+            {'ticker': 'OIL-2025-100', 'title': 'Will oil hit $100/barrel in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 36, 'no_bid': 64, 'volume': 42000, 'status': 'open'},
+
+            # Sports
+            {'ticker': 'NFL-2026-KC', 'title': 'Will Kansas City Chiefs win Super Bowl 2026?',
+             'close_time': '2026-02-15T23:59:00Z', 'yes_bid': 18, 'no_bid': 82, 'volume': 95000, 'status': 'open'},
+            {'ticker': 'NBA-2025-BOS', 'title': 'Will Boston Celtics win 2025 NBA Championship?',
+             'close_time': '2025-06-30T23:59:00Z', 'yes_bid': 24, 'no_bid': 76, 'volume': 70000, 'status': 'open'},
+            {'ticker': 'MLB-2025-NYY', 'title': 'Will Yankees win 2025 World Series?',
+             'close_time': '2025-11-01T23:59:00Z', 'yes_bid': 15, 'no_bid': 85, 'volume': 60000, 'status': 'open'},
+
+            # Tech & AI
+            {'ticker': 'GPT5-2025', 'title': 'Will OpenAI release GPT-5 in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 55, 'no_bid': 45, 'volume': 110000, 'status': 'open'},
+            {'ticker': 'TESLA-FSD-2025', 'title': 'Will Tesla achieve full self-driving in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 22, 'no_bid': 78, 'volume': 85000, 'status': 'open'},
+            {'ticker': 'APPLE-AR-2025', 'title': 'Will Apple release AR glasses in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 32, 'no_bid': 68, 'volume': 65000, 'status': 'open'},
+
+            # Weather & Climate
+            {'ticker': 'TEMP-2025-RECORD', 'title': 'Will 2025 be hottest year on record?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 58, 'no_bid': 42, 'volume': 28000, 'status': 'open'},
+            {'ticker': 'HURRICANE-2025', 'title': 'Will Atlantic see Category 5 hurricane in 2025?',
+             'close_time': '2025-11-30T23:59:00Z', 'yes_bid': 42, 'no_bid': 58, 'volume': 22000, 'status': 'open'},
+
+            # International
+            {'ticker': 'CHINA-GDP-2025', 'title': 'Will China GDP grow over 5% in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 51, 'no_bid': 49, 'volume': 38000, 'status': 'open'},
+            {'ticker': 'UK-ELECTION-2025', 'title': 'Will UK hold general election in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 35, 'no_bid': 65, 'volume': 45000, 'status': 'open'},
+
+            # Entertainment
+            {'ticker': 'OSCARS-2026-DRAMA', 'title': 'Will a drama win Best Picture at 2026 Oscars?',
+             'close_time': '2026-03-01T23:59:00Z', 'yes_bid': 62, 'no_bid': 38, 'volume': 18000, 'status': 'open'},
+            {'ticker': 'STREAMING-2025', 'title': 'Will Netflix add 20M+ subscribers in 2025?',
+             'close_time': '2025-12-31T23:59:00Z', 'yes_bid': 48, 'no_bid': 52, 'volume': 35000, 'status': 'open'},
         ]
 
     @retry_with_backoff(max_retries=3)

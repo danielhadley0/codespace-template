@@ -285,3 +285,49 @@ class PositionManager:
                 error=str(e)
             )
             return {'kalshi': 0.0, 'polymarket': 0.0, 'total': 0.0}
+
+    async def has_open_position_for_pair(self, pair) -> bool:
+        """
+        Check if there are any open positions for events in this pair.
+
+        Args:
+            pair: VerifiedPair object
+
+        Returns:
+            True if there are open positions, False otherwise
+        """
+        try:
+            async with db_manager.session() as session:
+                # Check for open positions on either event in the pair
+                # Open positions have closed_at IS NULL
+                stmt = select(Position).where(
+                    and_(
+                        Position.event_id.in_([
+                            pair.kalshi_event_id,
+                            pair.polymarket_event_id
+                        ]),
+                        Position.closed_at.is_(None),
+                        Position.quantity > 0
+                    )
+                )
+                result = await session.execute(stmt)
+                positions = result.scalars().all()
+
+                if positions:
+                    logger.debug(
+                        "Found open positions for pair",
+                        pair_id=pair.id,
+                        num_positions=len(positions)
+                    )
+                    return True
+
+                return False
+
+        except Exception as e:
+            logger.error(
+                "Error checking for open positions",
+                pair_id=pair.id,
+                error=str(e)
+            )
+            # Err on the side of caution - assume there's an open position
+            return True
