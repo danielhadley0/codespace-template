@@ -67,11 +67,6 @@ class PolymarketClient:
         Returns:
             List of market dictionaries
         """
-        # Return mock data in paper trading mode
-        if settings.paper_trading_mode:
-            logger.debug("Paper trading mode - returning mock Polymarket markets")
-            return self._get_mock_markets()
-
         try:
             url = f"{self.base_url}/markets"
             params = {
@@ -99,126 +94,6 @@ class PolymarketClient:
             logger.error("Error fetching Polymarket markets", error=str(e))
             return []
 
-    def _get_mock_markets(self) -> List[Dict[str, Any]]:
-        """Return mock market data for paper trading."""
-        return [
-            # Crypto markets (matching Kalshi)
-            {'condition_id': 'BTC-70K-DEC2025', 'question': 'Will Bitcoin trade above $70,000 on December 31, 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.52, 0.48],
-             'outcomes': [{'token_id': 'btc70k-yes'}, {'token_id': 'btc70k-no'}], 'volume': 55000},
-            {'condition_id': 'ETH-5K-2025', 'question': 'Will Ethereum hit $5,000 by end of 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.50, 0.50],
-             'outcomes': [{'token_id': 'eth5k-yes'}, {'token_id': 'eth5k-no'}], 'volume': 38000},
-            {'condition_id': 'BTC-100K-JUN25', 'question': 'Will Bitcoin reach $100,000 before July 2025?',
-             'end_date_iso': '2025-06-30T23:59:00Z', 'outcomePrices': [0.33, 0.67],
-             'outcomes': [{'token_id': 'btc100k-yes'}, {'token_id': 'btc100k-no'}], 'volume': 85000},
-            {'condition_id': 'SOL-500-2025', 'question': 'Will Solana be above $500 in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.40, 0.60],
-             'outcomes': [{'token_id': 'sol500-yes'}, {'token_id': 'sol500-no'}], 'volume': 28000},
-
-            # Stock indices (matching Kalshi)
-            {'condition_id': 'SPX-6000-2025', 'question': 'Will S&P 500 close 2025 above 6000?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.60, 0.40],
-             'outcomes': [{'token_id': 'spx6k-yes'}, {'token_id': 'spx6k-no'}], 'volume': 80000},
-            {'condition_id': 'SPX-6500-2025', 'question': 'Will S&P 500 hit 6500 in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.43, 0.57],
-             'outcomes': [{'token_id': 'spx6500-yes'}, {'token_id': 'spx6500-no'}], 'volume': 62000},
-            {'condition_id': 'NASDAQ-20K-2025', 'question': 'Will NASDAQ reach 20,000 in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.49, 0.51],
-             'outcomes': [{'token_id': 'ndaq20k-yes'}, {'token_id': 'ndaq20k-no'}], 'volume': 48000},
-            {'condition_id': 'DOW-45K-2025', 'question': 'Will Dow Jones hit 45,000 by December 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.56, 0.44],
-             'outcomes': [{'token_id': 'dow45k-yes'}, {'token_id': 'dow45k-no'}], 'volume': 42000},
-
-            # Tech stocks (matching Kalshi)
-            {'condition_id': 'TSLA-500-2025', 'question': 'Will Tesla stock reach $500 in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.36, 0.64],
-             'outcomes': [{'token_id': 'tsla500-yes'}, {'token_id': 'tsla500-no'}], 'volume': 95000},
-            {'condition_id': 'NVDA-200-2025', 'question': 'Will NVIDIA hit $200 per share in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.63, 0.37],
-             'outcomes': [{'token_id': 'nvda200-yes'}, {'token_id': 'nvda200-no'}], 'volume': 88000},
-            {'condition_id': 'AAPL-250-2025', 'question': 'Will Apple stock be above $250 in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.50, 0.50],
-             'outcomes': [{'token_id': 'aapl250-yes'}, {'token_id': 'aapl250-no'}], 'volume': 72000},
-            {'condition_id': 'MSFT-500-2025', 'question': 'Will Microsoft stock reach $500 in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.46, 0.54],
-             'outcomes': [{'token_id': 'msft500-yes'}, {'token_id': 'msft500-no'}], 'volume': 68000},
-
-            # Politics (matching Kalshi)
-            {'condition_id': 'PRES2028-DEM', 'question': 'Will Democrats win Presidential election in 2028?',
-             'end_date_iso': '2028-11-08T23:59:00Z', 'outcomePrices': [0.48, 0.52],
-             'outcomes': [{'token_id': 'pres28d-yes'}, {'token_id': 'pres28d-no'}], 'volume': 125000},
-            {'condition_id': 'HOUSE2026-GOP', 'question': 'Will GOP control House after 2026 midterms?',
-             'end_date_iso': '2026-11-04T23:59:00Z', 'outcomePrices': [0.52, 0.48],
-             'outcomes': [{'token_id': 'house26r-yes'}, {'token_id': 'house26r-no'}], 'volume': 78000},
-            {'condition_id': 'SENATE2026-DEM', 'question': 'Will Democrats control Senate in 2026?',
-             'end_date_iso': '2026-11-04T23:59:00Z', 'outcomePrices': [0.45, 0.55],
-             'outcomes': [{'token_id': 'sen26d-yes'}, {'token_id': 'sen26d-no'}], 'volume': 70000},
-
-            # Economy (matching Kalshi)
-            {'condition_id': 'FED-CUTS-2025', 'question': 'Will Federal Reserve cut rates 3+ times in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.39, 0.61],
-             'outcomes': [{'token_id': 'fedcut3-yes'}, {'token_id': 'fedcut3-no'}], 'volume': 58000},
-            {'condition_id': 'RECESSION-US-2025', 'question': 'Will US economy enter recession in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.26, 0.74],
-             'outcomes': [{'token_id': 'recess25-yes'}, {'token_id': 'recess25-no'}], 'volume': 92000},
-            {'condition_id': 'INFLATION-3PCT-2025', 'question': 'Will US inflation drop below 3% in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.58, 0.42],
-             'outcomes': [{'token_id': 'cpi3-yes'}, {'token_id': 'cpi3-no'}], 'volume': 47000},
-            {'condition_id': 'GOLD-3000-2025', 'question': 'Will gold hit $3,000/oz in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.42, 0.58],
-             'outcomes': [{'token_id': 'gold3k-yes'}, {'token_id': 'gold3k-no'}], 'volume': 38000},
-            {'condition_id': 'OIL-100-2025', 'question': 'Will crude oil reach $100 per barrel in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.34, 0.66],
-             'outcomes': [{'token_id': 'oil100-yes'}, {'token_id': 'oil100-no'}], 'volume': 44000},
-
-            # Sports (matching Kalshi)
-            {'condition_id': 'SB2026-CHIEFS', 'question': 'Will KC Chiefs win 2026 Super Bowl?',
-             'end_date_iso': '2026-02-15T23:59:00Z', 'outcomePrices': [0.16, 0.84],
-             'outcomes': [{'token_id': 'sb26kc-yes'}, {'token_id': 'sb26kc-no'}], 'volume': 98000},
-            {'condition_id': 'NBA2025-CELTICS', 'question': 'Will Celtics win 2025 NBA title?',
-             'end_date_iso': '2025-06-30T23:59:00Z', 'outcomePrices': [0.22, 0.78],
-             'outcomes': [{'token_id': 'nba25bos-yes'}, {'token_id': 'nba25bos-no'}], 'volume': 73000},
-            {'condition_id': 'WS2025-YANKEES', 'question': 'Will NY Yankees win 2025 World Series?',
-             'end_date_iso': '2025-11-01T23:59:00Z', 'outcomePrices': [0.13, 0.87],
-             'outcomes': [{'token_id': 'ws25nyy-yes'}, {'token_id': 'ws25nyy-no'}], 'volume': 62000},
-
-            # Tech & AI (matching Kalshi)
-            {'condition_id': 'GPT5-RELEASE-2025', 'question': 'Will OpenAI launch GPT-5 in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.53, 0.47],
-             'outcomes': [{'token_id': 'gpt5-yes'}, {'token_id': 'gpt5-no'}], 'volume': 115000},
-            {'condition_id': 'TESLA-FSD-2025', 'question': 'Will Tesla have full self-driving in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.20, 0.80],
-             'outcomes': [{'token_id': 'fsd25-yes'}, {'token_id': 'fsd25-no'}], 'volume': 88000},
-            {'condition_id': 'APPLE-AR-2025', 'question': 'Will Apple launch AR glasses in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.30, 0.70],
-             'outcomes': [{'token_id': 'applegar-yes'}, {'token_id': 'applegar-no'}], 'volume': 68000},
-
-            # Weather (matching Kalshi)
-            {'condition_id': 'TEMP-RECORD-2025', 'question': 'Will 2025 set global temperature record?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.56, 0.44],
-             'outcomes': [{'token_id': 'temp25-yes'}, {'token_id': 'temp25-no'}], 'volume': 30000},
-            {'condition_id': 'HURRICANE-CAT5-2025', 'question': 'Will Category 5 hurricane hit Atlantic in 2025?',
-             'end_date_iso': '2025-11-30T23:59:00Z', 'outcomePrices': [0.40, 0.60],
-             'outcomes': [{'token_id': 'hurr25-yes'}, {'token_id': 'hurr25-no'}], 'volume': 24000},
-
-            # International (matching Kalshi)
-            {'condition_id': 'CHINA-GDP-5PCT-2025', 'question': 'Will China economy grow 5%+ in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.49, 0.51],
-             'outcomes': [{'token_id': 'cngdp5-yes'}, {'token_id': 'cngdp5-no'}], 'volume': 40000},
-            {'condition_id': 'UK-GE-2025', 'question': 'Will United Kingdom hold election in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.33, 0.67],
-             'outcomes': [{'token_id': 'ukge25-yes'}, {'token_id': 'ukge25-no'}], 'volume': 47000},
-
-            # Entertainment (matching Kalshi)
-            {'condition_id': 'OSCARS2026-DRAMA', 'question': 'Will drama win Best Picture Oscar 2026?',
-             'end_date_iso': '2026-03-01T23:59:00Z', 'outcomePrices': [0.60, 0.40],
-             'outcomes': [{'token_id': 'osc26dr-yes'}, {'token_id': 'osc26dr-no'}], 'volume': 20000},
-            {'condition_id': 'NETFLIX-SUBS-2025', 'question': 'Will Netflix gain 20M+ subscribers in 2025?',
-             'end_date_iso': '2025-12-31T23:59:00Z', 'outcomePrices': [0.46, 0.54],
-             'outcomes': [{'token_id': 'nflx20m-yes'}, {'token_id': 'nflx20m-no'}], 'volume': 37000},
-        ]
-
     @retry_with_backoff(max_retries=3)
     async def get_market(self, condition_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -230,18 +105,6 @@ class PolymarketClient:
         Returns:
             Market details dictionary or None
         """
-        # Return mock data in paper trading mode
-        if settings.paper_trading_mode:
-            logger.debug("Paper trading mode - returning mock market data",
-                        condition_id=condition_id)
-            # Find and return the mock market that matches this condition_id
-            mock_markets = self._get_mock_markets()
-            for market in mock_markets:
-                if market.get('condition_id') == condition_id:
-                    return market
-            # If not found, return the first mock market as fallback
-            return mock_markets[0] if mock_markets else None
-
         try:
             url = f"{self.base_url}/markets/{condition_id}"
 
@@ -274,24 +137,6 @@ class PolymarketClient:
         Returns:
             Orderbook data with bids and asks
         """
-        # Return mock orderbook in paper trading mode
-        if settings.paper_trading_mode:
-            logger.debug("Paper trading mode - returning mock orderbook",
-                        token_id=token_id)
-            # Orderbook format: list of [price, size]
-            return {
-                'bids': [
-                    [0.48, 1000],  # Price 0.48, size 1000
-                    [0.47, 2000],
-                    [0.46, 5000]
-                ],
-                'asks': [
-                    [0.52, 1000],  # Price 0.52, size 1000
-                    [0.53, 2000],
-                    [0.54, 5000]
-                ]
-            }
-
         try:
             url = f"{self.base_url}/book"
             params = {"token_id": token_id}
