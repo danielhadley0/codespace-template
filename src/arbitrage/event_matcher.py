@@ -48,8 +48,8 @@ class EventMatcher:
 
         # Fetch markets from both platforms
         kalshi_markets, polymarket_markets = await asyncio.gather(
-            self.kalshi_client.get_markets(),
-            self.polymarket_client.get_markets()
+            self.kalshi_client.get_markets(status="open"),  # Only open markets
+            self.polymarket_client.get_markets(closed=False)  # Only open markets
         )
 
         # Validate responses (API clients now return lists)
@@ -69,6 +69,11 @@ class EventMatcher:
                    kalshi_markets=len(kalshi_markets),
                    polymarket_markets=len(polymarket_markets))
 
+        # Current time for filtering
+        now = datetime.utcnow()
+        kalshi_stored = 0
+        polymarket_stored = 0
+
         async with db_manager.session() as session:
             # Store Kalshi events
             for market in kalshi_markets:
@@ -79,7 +84,16 @@ class EventMatcher:
                     continue
                 try:
                     parsed = self.kalshi_client.parse_market_to_event(market)
+
+                    # Skip events that have already closed
+                    if parsed.get('close_time') and parsed['close_time'] < now:
+                        logger.debug("Skipping past Kalshi event",
+                                   title=parsed.get('title', '')[:50],
+                                   close_time=parsed.get('close_time'))
+                        continue
+
                     await self._store_event(session, Exchange.KALSHI, parsed)
+                    kalshi_stored += 1
                 except Exception as e:
                     logger.error("Error parsing/storing Kalshi market",
                                error=str(e),
@@ -94,7 +108,16 @@ class EventMatcher:
                     continue
                 try:
                     parsed = self.polymarket_client.parse_market_to_event(market)
+
+                    # Skip events that have already closed
+                    if parsed.get('close_time') and parsed['close_time'] < now:
+                        logger.debug("Skipping past Polymarket event",
+                                   title=parsed.get('title', '')[:50],
+                                   close_time=parsed.get('close_time'))
+                        continue
+
                     await self._store_event(session, Exchange.POLYMARKET, parsed)
+                    polymarket_stored += 1
                 except Exception as e:
                     logger.error("Error parsing/storing Polymarket market",
                                error=str(e),
@@ -102,8 +125,10 @@ class EventMatcher:
 
         logger.info(
             "Events fetched and stored",
-            kalshi_count=len(kalshi_markets),
-            polymarket_count=len(polymarket_markets)
+            kalshi_fetched=len(kalshi_markets),
+            kalshi_stored=kalshi_stored,
+            polymarket_fetched=len(polymarket_markets),
+            polymarket_stored=polymarket_stored
         )
 
     async def _store_event(
@@ -174,20 +199,31 @@ class EventMatcher:
                 matched_polymarket=len(matched_polymarket_ids)
             )
 
-            # Get all active Kalshi events that aren't already matched
+            # Get current time to filter out past events
+            now = datetime.utcnow()
+
+            # Get all active Kalshi events that aren't already matched and haven't closed yet
             kalshi_stmt = select(Event).where(
                 Event.source == Exchange.KALSHI,
                 Event.is_active == True,
                 Event.id.not_in(matched_kalshi_ids) if matched_kalshi_ids else True
             )
+            # Filter out events with close_time in the past (or NULL)
+            kalshi_stmt = kalshi_stmt.where(
+                (Event.close_time.is_(None)) | (Event.close_time > now)
+            )
             kalshi_result = await session.execute(kalshi_stmt)
             kalshi_events = kalshi_result.scalars().all()
 
-            # Get all active Polymarket events that aren't already matched
+            # Get all active Polymarket events that aren't already matched and haven't closed yet
             polymarket_stmt = select(Event).where(
                 Event.source == Exchange.POLYMARKET,
                 Event.is_active == True,
                 Event.id.not_in(matched_polymarket_ids) if matched_polymarket_ids else True
+            )
+            # Filter out events with close_time in the past (or NULL)
+            polymarket_stmt = polymarket_stmt.where(
+                (Event.close_time.is_(None)) | (Event.close_time > now)
             )
             polymarket_result = await session.execute(polymarket_stmt)
             polymarket_events = polymarket_result.scalars().all()
