@@ -74,24 +74,41 @@ class PolymarketClient:
                 "limit": 200
             }
 
+            logger.debug("Fetching Polymarket markets", url=url, params=params)
+
             async with self.session.get(
                 url,
                 headers=self._get_headers(),
                 params=params
             ) as response:
+                response_text = await response.text()
+                logger.debug("Polymarket API response",
+                           status=response.status,
+                           response_length=len(response_text),
+                           response_preview=response_text[:500])
+
                 if response.status == 200:
-                    markets = await response.json()
-                    logger.debug("Fetched Polymarket markets", count=len(markets))
-                    return markets
+                    try:
+                        import json
+                        markets = json.loads(response_text)
+                        logger.info("Successfully fetched Polymarket markets", count=len(markets))
+                        return markets
+                    except Exception as json_error:
+                        logger.error("Failed to parse Polymarket JSON response",
+                                   error=str(json_error),
+                                   response=response_text[:500])
+                        return []
                 else:
-                    error_text = await response.text()
                     logger.error("Failed to fetch Polymarket markets",
                                status=response.status,
-                               error=error_text)
+                               url=url,
+                               error=response_text[:500])
                     return []
 
         except Exception as e:
-            logger.error("Error fetching Polymarket markets", error=str(e))
+            logger.error("Error fetching Polymarket markets",
+                        error=str(e),
+                        url=f"{self.base_url}/markets")
             return []
 
     @retry_with_backoff(max_retries=3)

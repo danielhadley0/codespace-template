@@ -112,25 +112,42 @@ class KalshiClient:
                 "limit": 200
             }
 
+            logger.debug("Fetching Kalshi markets", url=url, params=params)
+
             async with self.session.get(
                 url,
                 headers=self._get_headers(),
                 params=params
             ) as response:
+                response_text = await response.text()
+                logger.debug("Kalshi API response",
+                           status=response.status,
+                           response_length=len(response_text),
+                           response_preview=response_text[:500])
+
                 if response.status == 200:
-                    data = await response.json()
-                    markets = data.get('markets', [])
-                    logger.debug("Fetched Kalshi markets", count=len(markets))
-                    return markets
+                    try:
+                        import json
+                        data = json.loads(response_text)
+                        markets = data.get('markets', [])
+                        logger.info("Successfully fetched Kalshi markets", count=len(markets))
+                        return markets
+                    except Exception as json_error:
+                        logger.error("Failed to parse Kalshi JSON response",
+                                   error=str(json_error),
+                                   response=response_text[:500])
+                        return []
                 else:
-                    error_text = await response.text()
                     logger.error("Failed to fetch Kalshi markets",
                                status=response.status,
-                               error=error_text)
+                               url=url,
+                               error=response_text[:500])
                     return []
 
         except Exception as e:
-            logger.error("Error fetching Kalshi markets", error=str(e))
+            logger.error("Error fetching Kalshi markets",
+                        error=str(e),
+                        url=f"{self.base_url}/markets")
             return []
 
     @retry_with_backoff(max_retries=3)

@@ -52,16 +52,49 @@ class EventMatcher:
             self.polymarket_client.get_markets()
         )
 
+        # Validate responses
+        if not isinstance(kalshi_markets, list):
+            logger.error("Kalshi API returned unexpected type",
+                        type=type(kalshi_markets).__name__,
+                        response=str(kalshi_markets)[:200])
+            kalshi_markets = []
+
+        if not isinstance(polymarket_markets, list):
+            logger.error("Polymarket API returned unexpected type",
+                        type=type(polymarket_markets).__name__,
+                        response=str(polymarket_markets)[:200])
+            polymarket_markets = []
+
         async with db_manager.session() as session:
             # Store Kalshi events
             for market in kalshi_markets:
-                parsed = self.kalshi_client.parse_market_to_event(market)
-                await self._store_event(session, Exchange.KALSHI, parsed)
+                if not isinstance(market, dict):
+                    logger.warning("Skipping invalid Kalshi market - not a dict",
+                                  type=type(market).__name__,
+                                  data=str(market)[:100])
+                    continue
+                try:
+                    parsed = self.kalshi_client.parse_market_to_event(market)
+                    await self._store_event(session, Exchange.KALSHI, parsed)
+                except Exception as e:
+                    logger.error("Error parsing/storing Kalshi market",
+                               error=str(e),
+                               market_data=str(market)[:200])
 
             # Store Polymarket events
             for market in polymarket_markets:
-                parsed = self.polymarket_client.parse_market_to_event(market)
-                await self._store_event(session, Exchange.POLYMARKET, parsed)
+                if not isinstance(market, dict):
+                    logger.warning("Skipping invalid Polymarket market - not a dict",
+                                  type=type(market).__name__,
+                                  data=str(market)[:100])
+                    continue
+                try:
+                    parsed = self.polymarket_client.parse_market_to_event(market)
+                    await self._store_event(session, Exchange.POLYMARKET, parsed)
+                except Exception as e:
+                    logger.error("Error parsing/storing Polymarket market",
+                               error=str(e),
+                               market_data=str(market)[:200])
 
         logger.info(
             "Events fetched and stored",
