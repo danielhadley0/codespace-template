@@ -90,9 +90,22 @@ class PolymarketClient:
                 if response.status == 200:
                     try:
                         import json
-                        markets = json.loads(response_text)
-                        logger.info("Successfully fetched Polymarket markets", count=len(markets))
-                        return markets
+                        data = json.loads(response_text)
+
+                        # Polymarket wraps response in {'data': [...]}
+                        if isinstance(data, dict) and 'data' in data:
+                            markets = data['data']
+                            logger.info("Successfully fetched Polymarket markets", count=len(markets))
+                            return markets
+                        elif isinstance(data, list):
+                            # Direct list response
+                            logger.info("Successfully fetched Polymarket markets", count=len(data))
+                            return data
+                        else:
+                            logger.error("Unexpected Polymarket response structure",
+                                       type=type(data).__name__,
+                                       keys=list(data.keys()) if isinstance(data, dict) else None)
+                            return []
                     except Exception as json_error:
                         logger.error("Failed to parse Polymarket JSON response",
                                    error=str(json_error),

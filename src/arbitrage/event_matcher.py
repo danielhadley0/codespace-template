@@ -52,7 +52,7 @@ class EventMatcher:
             self.polymarket_client.get_markets()
         )
 
-        # Validate responses
+        # Validate responses (API clients now return lists)
         if not isinstance(kalshi_markets, list):
             logger.error("Kalshi API returned unexpected type",
                         type=type(kalshi_markets).__name__,
@@ -64,6 +64,10 @@ class EventMatcher:
                         type=type(polymarket_markets).__name__,
                         response=str(polymarket_markets)[:200])
             polymarket_markets = []
+
+        logger.info("API responses validated",
+                   kalshi_markets=len(kalshi_markets),
+                   polymarket_markets=len(polymarket_markets))
 
         async with db_manager.session() as session:
             # Store Kalshi events
