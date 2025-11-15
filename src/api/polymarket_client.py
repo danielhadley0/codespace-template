@@ -368,22 +368,39 @@ class PolymarketClient:
         yes_price = float(outcome_prices[0]) if len(outcome_prices) > 0 else 0.5
         no_price = float(outcome_prices[1]) if len(outcome_prices) > 1 else (1 - yes_price)
 
-        # Parse close_time and remove timezone info for database compatibility
+        # Parse close_time - try multiple field names
         close_time = None
-        if market.get('end_date_iso'):
-            try:
-                # Parse and convert to naive datetime
-                dt = datetime.fromisoformat(
-                    market.get('end_date_iso', '').replace('Z', '+00:00')
-                )
-                close_time = dt.replace(tzinfo=None)  # Remove timezone
-            except:
-                pass
+        for date_field in ['end_date_iso', 'endDate', 'end_date', 'closingDate']:
+            if market.get(date_field):
+                try:
+                    # Parse and convert to naive datetime
+                    dt = datetime.fromisoformat(
+                        str(market.get(date_field, '')).replace('Z', '+00:00')
+                    )
+                    close_time = dt.replace(tzinfo=None)  # Remove timezone
+                    break
+                except Exception as e:
+                    logger.debug(f"Failed to parse {date_field}",
+                               value=market.get(date_field),
+                               error=str(e))
+                    continue
+
+        # If no close_time found, log the available fields for debugging
+        if not close_time:
+            logger.debug("No close_time found in Polymarket market",
+                        available_fields=list(market.keys())[:20],
+                        title=market.get('question', market.get('title', ''))[:50])
+
+        # Get slug - try multiple field names
+        slug = market.get('slug') or market.get('market_slug') or market.get('clobTokenIds', [''])[0]
+
+        # Build URL
+        market_url = f"https://polymarket.com/event/{slug}" if slug else "https://polymarket.com"
 
         return {
-            'event_id': market.get('condition_id', market.get('id')),
+            'event_id': market.get('condition_id', market.get('id', market.get('conditionId', ''))),
             'title': market.get('question', market.get('title', '')),
-            'url': f"https://polymarket.com/market/{market.get('slug', '')}",
+            'url': market_url,
             'close_time': close_time,
             'yes_price': yes_price,
             'no_price': no_price,

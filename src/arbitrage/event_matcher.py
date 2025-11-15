@@ -109,12 +109,30 @@ class EventMatcher:
                 try:
                     parsed = self.polymarket_client.parse_market_to_event(market)
 
+                    # Skip if title contains obvious old dates (2020-2023)
+                    title_lower = parsed.get('title', '').lower()
+                    import re
+                    old_year_pattern = r'\b(202[0-3]|2019|2018)\b'
+                    if re.search(old_year_pattern, title_lower):
+                        logger.debug("Skipping Polymarket event with old year in title",
+                                   title=parsed.get('title', '')[:50])
+                        continue
+
                     # Skip events that have already closed
                     if parsed.get('close_time') and parsed['close_time'] < now:
                         logger.debug("Skipping past Polymarket event",
                                    title=parsed.get('title', '')[:50],
                                    close_time=parsed.get('close_time'))
                         continue
+
+                    # Skip events without close_time that have dates in title suggesting they're old
+                    if not parsed.get('close_time'):
+                        # Check if title has a date pattern like (02/07/2023) or (2/18/2023)
+                        date_in_title = re.search(r'\((\d{1,2}/\d{1,2}/\d{4})\)', title_lower)
+                        if date_in_title:
+                            logger.debug("Skipping Polymarket event with date in title but no close_time",
+                                       title=parsed.get('title', '')[:50])
+                            continue
 
                     await self._store_event(session, Exchange.POLYMARKET, parsed)
                     polymarket_stored += 1
@@ -206,11 +224,9 @@ class EventMatcher:
             kalshi_stmt = select(Event).where(
                 Event.source == Exchange.KALSHI,
                 Event.is_active == True,
-                Event.id.not_in(matched_kalshi_ids) if matched_kalshi_ids else True
-            )
-            # Filter out events with close_time in the past (or NULL)
-            kalshi_stmt = kalshi_stmt.where(
-                (Event.close_time.is_(None)) | (Event.close_time > now)
+                Event.id.not_in(matched_kalshi_ids) if matched_kalshi_ids else True,
+                Event.close_time.is_not(None),  # MUST have a close_time
+                Event.close_time > now  # MUST be in the future
             )
             kalshi_result = await session.execute(kalshi_stmt)
             kalshi_events = kalshi_result.scalars().all()
@@ -219,11 +235,9 @@ class EventMatcher:
             polymarket_stmt = select(Event).where(
                 Event.source == Exchange.POLYMARKET,
                 Event.is_active == True,
-                Event.id.not_in(matched_polymarket_ids) if matched_polymarket_ids else True
-            )
-            # Filter out events with close_time in the past (or NULL)
-            polymarket_stmt = polymarket_stmt.where(
-                (Event.close_time.is_(None)) | (Event.close_time > now)
+                Event.id.not_in(matched_polymarket_ids) if matched_polymarket_ids else True,
+                Event.close_time.is_not(None),  # MUST have a close_time
+                Event.close_time > now  # MUST be in the future
             )
             polymarket_result = await session.execute(polymarket_stmt)
             polymarket_events = polymarket_result.scalars().all()
