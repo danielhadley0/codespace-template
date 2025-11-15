@@ -108,31 +108,34 @@ class EventMatcher:
                     continue
                 try:
                     parsed = self.polymarket_client.parse_market_to_event(market)
-
-                    # Skip if title contains obvious old dates (2020-2023)
                     title_lower = parsed.get('title', '').lower()
                     import re
+
+                    # Skip if title contains obvious old dates (2018-2023)
                     old_year_pattern = r'\b(202[0-3]|2019|2018)\b'
                     if re.search(old_year_pattern, title_lower):
                         logger.debug("Skipping Polymarket event with old year in title",
                                    title=parsed.get('title', '')[:50])
                         continue
 
-                    # Skip events that have already closed
+                    # Skip if title has a date pattern like (02/07/2023) with year 2018-2023
+                    date_in_title_match = re.search(r'\((\d{1,2}/\d{1,2}/(\d{4}))\)', title_lower)
+                    if date_in_title_match:
+                        year_in_date = int(date_in_title_match.group(2))
+                        if 2018 <= year_in_date <= 2023:
+                            logger.debug("Skipping Polymarket event with old date in title",
+                                       title=parsed.get('title', '')[:50])
+                            continue
+
+                    # Skip events that have a close_time in the past
                     if parsed.get('close_time') and parsed['close_time'] < now:
                         logger.debug("Skipping past Polymarket event",
                                    title=parsed.get('title', '')[:50],
                                    close_time=parsed.get('close_time'))
                         continue
 
-                    # Skip events without close_time that have dates in title suggesting they're old
-                    if not parsed.get('close_time'):
-                        # Check if title has a date pattern like (02/07/2023) or (2/18/2023)
-                        date_in_title = re.search(r'\((\d{1,2}/\d{1,2}/\d{4})\)', title_lower)
-                        if date_in_title:
-                            logger.debug("Skipping Polymarket event with date in title but no close_time",
-                                       title=parsed.get('title', '')[:50])
-                            continue
+                    # If event has no close_time, still store it (we'll filter in matching)
+                    # This allows more events through for matching
 
                     await self._store_event(session, Exchange.POLYMARKET, parsed)
                     polymarket_stored += 1

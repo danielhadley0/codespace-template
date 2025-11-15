@@ -71,7 +71,7 @@ class PolymarketClient:
             url = f"{self.base_url}/markets"
             params = {
                 "closed": str(closed).lower(),
-                "limit": 200
+                "limit": 1000  # Increased from 200
             }
 
             logger.debug("Fetching Polymarket markets", url=url, params=params)
