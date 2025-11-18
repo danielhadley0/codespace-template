@@ -10,7 +10,7 @@ from datetime import datetime
 from config.settings import settings
 from src.arbitrage.event_matcher import EventMatcher
 from src.execution.position_manager import PositionManager
-from src.database import db_manager, VerifiedPair, Exchange
+from src.database import db_manager, VerifiedPair, Exchange, Event
 from sqlalchemy import select
 
 logger = structlog.get_logger()
@@ -94,6 +94,75 @@ class ArbitrageBot(commands.Bot):
                 logger.error("Error finding matches", error=str(e))
                 await ctx.send(f"Error: {str(e)}")
 
+        @self.command(name='match_by_url')
+        async def match_by_url(ctx, kalshi_url: str, polymarket_url: str):
+            """
+            Manually match two events by providing their URLs.
+
+            Usage: /match_by_url <kalshi_url> <polymarket_url>
+            Example: /match_by_url https://kalshi.com/markets/... https://polymarket.com/event/...
+            """
+            try:
+                await ctx.send("🔍 Looking up events by URL...")
+
+                # Look up both events in the database
+                async with db_manager.session() as session:
+                    # Find Kalshi event
+                    kalshi_stmt = select(Event).where(
+                        Event.url == kalshi_url,
+                        Event.source == Exchange.KALSHI
+                    )
+                    kalshi_result = await session.execute(kalshi_stmt)
+                    kalshi_event = kalshi_result.scalar_one_or_none()
+
+                    if not kalshi_event:
+                        await ctx.send(f"❌ Kalshi event not found in database. URL: {kalshi_url}\n\nMake sure the event has been fetched by the system first.")
+                        return
+
+                    # Find Polymarket event
+                    poly_stmt = select(Event).where(
+                        Event.url == polymarket_url,
+                        Event.source == Exchange.POLYMARKET
+                    )
+                    poly_result = await session.execute(poly_stmt)
+                    poly_event = poly_result.scalar_one_or_none()
+
+                    if not poly_event:
+                        await ctx.send(f"❌ Polymarket event not found in database. URL: {polymarket_url}\n\nMake sure the event has been fetched by the system first.")
+                        return
+
+                # Create the verified pair
+                verified_pair = await self.event_matcher.verify_pair(
+                    kalshi_event_id=kalshi_event.id,
+                    polymarket_event_id=poly_event.id,
+                    approved_by=str(ctx.author.id),
+                    notes=f"Manually matched by URL via Discord by {ctx.author.name}"
+                )
+
+                embed = discord.Embed(
+                    title="✅ Events Matched Successfully",
+                    description=f"Pair ID: {verified_pair.id}",
+                    color=discord.Color.green(),
+                    timestamp=datetime.utcnow()
+                )
+                embed.add_field(
+                    name="Kalshi Event",
+                    value=f"**Title:** {kalshi_event.title}\n**URL:** {kalshi_url}",
+                    inline=False
+                )
+                embed.add_field(
+                    name="Polymarket Event",
+                    value=f"**Title:** {poly_event.title}\n**URL:** {polymarket_url}",
+                    inline=False
+                )
+                embed.set_footer(text=f"The system will now monitor this pair for arbitrage opportunities")
+
+                await ctx.send(embed=embed)
+
+            except Exception as e:
+                logger.error("Error matching events by URL", error=str(e))
+                await ctx.send(f"❌ Error: {str(e)}")
+
         @self.command(name='approve_pair')
         async def approve_pair(ctx, kalshi_event_id: int, polymarket_event_id: int):
             """
@@ -131,6 +200,75 @@ class ArbitrageBot(commands.Bot):
             except Exception as e:
                 logger.error("Error approving pair", error=str(e))
                 await ctx.send(f"Error: {str(e)}")
+
+        @self.command(name='list_events')
+        async def list_events(ctx, exchange: str = None, limit: int = 10):
+            """
+            List recent events from one or both exchanges.
+
+            Usage: /list_events [exchange] [limit]
+            Example: /list_events kalshi 5
+                    /list_events polymarket 10
+                    /list_events (shows both)
+            """
+            try:
+                async with db_manager.session() as session:
+                    embeds = []
+
+                    exchanges_to_query = []
+                    if exchange:
+                        exchange_lower = exchange.lower()
+                        if exchange_lower == "kalshi":
+                            exchanges_to_query = [Exchange.KALSHI]
+                        elif exchange_lower in ["polymarket", "poly"]:
+                            exchanges_to_query = [Exchange.POLYMARKET]
+                        else:
+                            await ctx.send(f"❌ Invalid exchange. Use 'kalshi' or 'polymarket'")
+                            return
+                    else:
+                        exchanges_to_query = [Exchange.KALSHI, Exchange.POLYMARKET]
+
+                    for exch in exchanges_to_query:
+                        stmt = select(Event).where(
+                            Event.source == exch,
+                            Event.is_active == True
+                        ).order_by(Event.created_at.desc()).limit(limit)
+
+                        result = await session.execute(stmt)
+                        events = result.scalars().all()
+
+                        if events:
+                            color = discord.Color.blue() if exch == Exchange.KALSHI else discord.Color.purple()
+                            embed = discord.Embed(
+                                title=f"📋 Recent {exch.value.capitalize()} Events",
+                                description=f"Showing {len(events)} most recent events",
+                                color=color,
+                                timestamp=datetime.utcnow()
+                            )
+
+                            for event in events:
+                                close_str = event.close_time.strftime('%Y-%m-%d %H:%M') if event.close_time else 'N/A'
+                                title_truncated = event.title[:80] + "..." if len(event.title) > 80 else event.title
+
+                                embed.add_field(
+                                    name=title_truncated,
+                                    value=(
+                                        f"**Close:** {close_str}\n"
+                                        f"**URL:** {event.url}"
+                                    ),
+                                    inline=False
+                                )
+
+                            embeds.append(embed)
+                        else:
+                            await ctx.send(f"No {exch.value} events found in database.")
+
+                    for embed in embeds:
+                        await ctx.send(embed=embed)
+
+            except Exception as e:
+                logger.error("Error listing events", error=str(e))
+                await ctx.send(f"❌ Error: {str(e)}")
 
         @self.command(name='list_pairs')
         async def list_pairs(ctx):
@@ -413,8 +551,10 @@ class ArbitrageBot(commands.Bot):
             )
 
             cmd_list = [
-                ("/find_matches [similarity]", "Find potential matching events"),
-                ("/approve_pair <kalshi_id> <poly_id>", "Approve an event pair"),
+                ("/match_by_url <kalshi_url> <poly_url>", "Match events by their URLs (recommended)"),
+                ("/list_events [exchange] [limit]", "Browse available events from exchanges"),
+                ("/find_matches [similarity]", "Find potential matching events (fuzzy)"),
+                ("/approve_pair <kalshi_id> <poly_id>", "Approve an event pair by IDs"),
                 ("/list_pairs", "List all active verified pairs"),
                 ("/positions", "Show current positions and PnL"),
                 ("/pause_pair <pair_id>", "Pause trading for a pair"),
