@@ -72,7 +72,12 @@ class EventMatcher:
         # Current time for filtering
         now = datetime.utcnow()
         kalshi_stored = 0
+        kalshi_filtered_parlay = 0
         polymarket_stored = 0
+        polymarket_filtered_old_year = 0
+        polymarket_filtered_old_date = 0
+        polymarket_filtered_past = 0
+        polymarket_parse_errors = 0
 
         async with db_manager.session() as session:
             # Store Kalshi events
@@ -83,6 +88,13 @@ class EventMatcher:
                                   data=str(market)[:100])
                     continue
                 try:
+                    # Filter out parlay/multi-leg markets
+                    ticker = market.get('ticker', '')
+                    if 'SINGLEGAME' in ticker or 'MULTIGAME' in ticker or 'EXTENDED' in ticker:
+                        kalshi_filtered_parlay += 1
+                        logger.debug("Filtering out Kalshi parlay market", ticker=ticker)
+                        continue
+
                     parsed = self.kalshi_client.parse_market_to_event(market)
 
                     # Skip events that have already closed
@@ -114,6 +126,7 @@ class EventMatcher:
                     # Skip if title contains obvious old dates (2018-2023)
                     old_year_pattern = r'\b(202[0-3]|2019|2018)\b'
                     if re.search(old_year_pattern, title_lower):
+                        polymarket_filtered_old_year += 1
                         logger.debug("Skipping Polymarket event with old year in title",
                                    title=parsed.get('title', '')[:50])
                         continue
@@ -123,12 +136,14 @@ class EventMatcher:
                     if date_in_title_match:
                         year_in_date = int(date_in_title_match.group(2))
                         if 2018 <= year_in_date <= 2023:
+                            polymarket_filtered_old_date += 1
                             logger.debug("Skipping Polymarket event with old date in title",
                                        title=parsed.get('title', '')[:50])
                             continue
 
                     # Skip events that have a close_time in the past
                     if parsed.get('close_time') and parsed['close_time'] < now:
+                        polymarket_filtered_past += 1
                         logger.debug("Skipping past Polymarket event",
                                    title=parsed.get('title', '')[:50],
                                    close_time=parsed.get('close_time'))
@@ -140,6 +155,7 @@ class EventMatcher:
                     await self._store_event(session, Exchange.POLYMARKET, parsed)
                     polymarket_stored += 1
                 except Exception as e:
+                    polymarket_parse_errors += 1
                     logger.error("Error parsing/storing Polymarket market",
                                error=str(e),
                                market_data=str(market)[:200])
@@ -148,9 +164,94 @@ class EventMatcher:
             "Events fetched and stored",
             kalshi_fetched=len(kalshi_markets),
             kalshi_stored=kalshi_stored,
+            kalshi_filtered_parlay=kalshi_filtered_parlay,
             polymarket_fetched=len(polymarket_markets),
-            polymarket_stored=polymarket_stored
+            polymarket_stored=polymarket_stored,
+            polymarket_filtered_old_year=polymarket_filtered_old_year,
+            polymarket_filtered_old_date=polymarket_filtered_old_date,
+            polymarket_filtered_past=polymarket_filtered_past,
+            polymarket_parse_errors=polymarket_parse_errors
         )
+
+    async def fetch_event_by_url(self, url: str) -> Optional[Event]:
+        """
+        Fetch a single event by URL and store it in the database.
+
+        Args:
+            url: Full URL to the event (Kalshi or Polymarket)
+
+        Returns:
+            Event object if successful, None otherwise
+        """
+        import re
+
+        try:
+            # Determine platform and extract market ID from URL
+            if 'kalshi.com' in url:
+                # Kalshi URL format: https://kalshi.com/markets/TICKER
+                match = re.search(r'kalshi\.com/markets/([A-Z0-9\-]+)', url)
+                if not match:
+                    logger.error("Could not extract Kalshi ticker from URL", url=url)
+                    return None
+
+                ticker = match.group(1)
+                logger.info("Fetching Kalshi market by ticker", ticker=ticker)
+
+                market = await self.kalshi_client.get_market(ticker)
+                if not market:
+                    logger.error("Kalshi market not found", ticker=ticker)
+                    return None
+
+                parsed = self.kalshi_client.parse_market_to_event(market)
+                source = Exchange.KALSHI
+
+            elif 'polymarket.com' in url:
+                # Polymarket URL format: https://polymarket.com/event/slug
+                match = re.search(r'polymarket\.com/event/([a-z0-9\-]+)', url)
+                if not match:
+                    logger.error("Could not extract Polymarket slug from URL", url=url)
+                    return None
+
+                slug = match.group(1)
+                logger.info("Fetching Polymarket market by slug", slug=slug)
+
+                # Polymarket API uses condition_id, not slug
+                # We need to search for the market by slug or fetch all and find it
+                # For now, try using slug as the ID
+                market = await self.polymarket_client.get_market(slug)
+                if not market:
+                    logger.error("Polymarket market not found", slug=slug)
+                    return None
+
+                parsed = self.polymarket_client.parse_market_to_event(market)
+                source = Exchange.POLYMARKET
+
+            else:
+                logger.error("Unknown platform URL", url=url)
+                return None
+
+            # Store the event
+            async with db_manager.session() as session:
+                await self._store_event(session, source, parsed)
+
+                # Fetch and return the stored event
+                stmt = select(Event).where(
+                    Event.source == source,
+                    Event.event_id == parsed['event_id']
+                )
+                result = await session.execute(stmt)
+                event = result.scalar_one_or_none()
+
+                logger.info("Event fetched and stored from URL",
+                          source=source.value,
+                          event_id=parsed['event_id'],
+                          title=parsed['title'][:50])
+
+                return event
+
+        except Exception as e:
+            logger.error("Error fetching event by URL", url=url, error=str(e))
+            return None
 
     async def _store_event(
         self,
@@ -173,6 +274,7 @@ class EventMatcher:
             existing_event.url = event_data.get('url')
             existing_event.close_time = event_data.get('close_time')
             existing_event.updated_at = datetime.utcnow()
+            return existing_event
         else:
             # Create new event
             new_event = Event(
@@ -184,6 +286,7 @@ class EventMatcher:
                 is_active=True
             )
             session.add(new_event)
+            return new_event
 
     async def find_potential_matches(
         self,

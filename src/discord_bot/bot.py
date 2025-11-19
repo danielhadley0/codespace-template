@@ -105,7 +105,7 @@ class ArbitrageBot(commands.Bot):
             try:
                 await ctx.send("🔍 Looking up events by URL...")
 
-                # Look up both events in the database
+                # Look up both events in the database first
                 async with db_manager.session() as session:
                     # Find Kalshi event
                     kalshi_stmt = select(Event).where(
@@ -115,10 +115,6 @@ class ArbitrageBot(commands.Bot):
                     kalshi_result = await session.execute(kalshi_stmt)
                     kalshi_event = kalshi_result.scalar_one_or_none()
 
-                    if not kalshi_event:
-                        await ctx.send(f"❌ Kalshi event not found in database. URL: {kalshi_url}\n\nMake sure the event has been fetched by the system first.")
-                        return
-
                     # Find Polymarket event
                     poly_stmt = select(Event).where(
                         Event.url == polymarket_url,
@@ -127,8 +123,19 @@ class ArbitrageBot(commands.Bot):
                     poly_result = await session.execute(poly_stmt)
                     poly_event = poly_result.scalar_one_or_none()
 
+                # If events not found, fetch from API
+                if not kalshi_event:
+                    await ctx.send("⏳ Kalshi event not in database, fetching from API...")
+                    kalshi_event = await self.event_matcher.fetch_event_by_url(kalshi_url)
+                    if not kalshi_event:
+                        await ctx.send(f"❌ Could not fetch Kalshi event from URL: {kalshi_url}\n\nPlease check the URL is correct.")
+                        return
+
+                if not poly_event:
+                    await ctx.send("⏳ Polymarket event not in database, fetching from API...")
+                    poly_event = await self.event_matcher.fetch_event_by_url(polymarket_url)
                     if not poly_event:
-                        await ctx.send(f"❌ Polymarket event not found in database. URL: {polymarket_url}\n\nMake sure the event has been fetched by the system first.")
+                        await ctx.send(f"❌ Could not fetch Polymarket event from URL: {polymarket_url}\n\nPlease check the URL is correct.")
                         return
 
                 # Create the verified pair
